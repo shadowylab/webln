@@ -1,0 +1,22 @@
+[package]
+name = "webln"
+version = "0.1.0"
+edition = "2021"
+description = "WebLN - Lightning Web Standard"
+authors = ["Yuki Kishimoto <yukikishimoto@protonmail.com>"]
+homepage = "https://github.com/yukibtc/rust-webln"
+repository = "https://github.com/yukibtc/rust-webln.git"
+license = "MIT"
+#rust-version = "1.64.0" TODO: check MSRV
+keywords = ["webln", "lightning", "bitcoin"]
+
+[dependencies]
+js-sys = "0.3"
+wasm-bindgen = { version = "0.2", default-features = false }
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", default-features = false, features = ["Window"] }
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
