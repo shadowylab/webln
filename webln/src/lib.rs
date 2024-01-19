@@ -5,10 +5,14 @@
 
 use core::fmt;
 
-use js_sys::{Function, Object, Promise, Reflect};
+use js_sys::{Array, Function, Object, Promise, Reflect};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::Window;
+
+pub const IS_ENABLED: &str = "isEnabled";
+pub const ENABLE: &str = "enable";
+pub const GET_INFO: &str = "getInfo";
 
 /// WebLN error
 #[derive(Debug)]
@@ -45,6 +49,85 @@ impl From<JsValue> for Error {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GetInfoNode {
+    pub alias: Option<String>,
+    pub pubkey: Option<String>,
+    pub color: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum GetInfoMethod {
+    IsEnabled,
+    Enable,
+    GetInfo,
+    Keysend,
+    MakeInvoice,
+    SendPayment,
+    SendPaymentAsync,
+    SignMessage,
+    VerifyMessage,
+    Request,
+    Lnurl,
+    On,
+    Off,
+    GetBalance,
+    Other(String),
+}
+
+impl<S> From<S> for GetInfoMethod
+where
+    S: AsRef<str>,
+{
+    fn from(method: S) -> Self {
+        match method.as_ref() {
+            IS_ENABLED => Self::IsEnabled,
+            ENABLE => Self::Enable,
+            GET_INFO => Self::GetInfo,
+            "keysend" => Self::Keysend,
+            "makeInvoice" => Self::MakeInvoice,
+            "sendPayment" => Self::SendPayment,
+            "sendPaymentAsync" => Self::SendPaymentAsync,
+            "signMessage" => Self::SignMessage,
+            "verifyMessage" => Self::VerifyMessage,
+            "request" => Self::Request,
+            "lnurl" => Self::Lnurl,
+            "on" => Self::On,
+            "off" => Self::Off,
+            "getBalance" => Self::GetBalance,
+            other => Self::Other(other.to_string()),
+        }
+    }
+}
+
+impl fmt::Display for GetInfoMethod {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::IsEnabled => write!(f, "{IS_ENABLED}"),
+            Self::Enable => write!(f, "{ENABLE}"),
+            Self::GetInfo => write!(f, "{GET_INFO}"),
+            Self::Keysend => write!(f, "keysend"),
+            Self::MakeInvoice => write!(f, "makeInvoice"),
+            Self::SendPayment => write!(f, "sendPayment"),
+            Self::SendPaymentAsync => write!(f, "sendPaymentAsync"),
+            Self::SignMessage => write!(f, "signMessage"),
+            Self::VerifyMessage => write!(f, "verifyMessage"),
+            Self::Request => write!(f, "request"),
+            Self::Lnurl => write!(f, "lnurl"),
+            Self::On => write!(f, "on"),
+            Self::Off => write!(f, "off"),
+            Self::GetBalance => write!(f, "getBalance"),
+            Self::Other(other) => write!(f, "{other}"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GetInfoResponse {
+    pub node: GetInfoNode,
+    pub methods: Vec<GetInfoMethod>,
+}
+
 /// WebLN instance
 #[derive(Debug, Clone)]
 pub struct WebLN {
@@ -75,16 +158,16 @@ impl WebLN {
             .map_err(|_| Error::NamespaceNotFound(name.to_string()))
     }
 
-    /* /// Get value from object key
+    /// Get value from object key
     fn get_value_by_key(&self, obj: &Object, key: &str) -> Result<JsValue, Error> {
         Reflect::get(obj, &JsValue::from_str(key))
             .map_err(|_| Error::ObjectKeyNotFound(key.to_string()))
-    } */
+    }
 
     /// Check if `webln` is enabled without explicitly enabling it through `webln.enable()`
     /// (which may cause a confirmation popup in some providers)
     pub async fn is_enabled(&self) -> Result<bool, Error> {
-        let func: Function = self.get_func(&self.webln_obj, "isEnabled")?;
+        let func: Function = self.get_func(&self.webln_obj, IS_ENABLED)?;
         let promise: Promise = Promise::resolve(&func.call0(&self.webln_obj)?);
         let result: JsValue = JsFuture::from(promise).await?;
         result
@@ -96,9 +179,39 @@ impl WebLN {
     /// Calling `webln.enable()` will prompt the user for permission to use the WebLN capabilities of the browser.
     /// After that you are free to call any of the other API methods.
     pub async fn enable(&self) -> Result<(), Error> {
-        let func: Function = self.get_func(&self.webln_obj, "enable")?;
+        let func: Function = self.get_func(&self.webln_obj, ENABLE)?;
         let promise: Promise = Promise::resolve(&func.call0(&self.webln_obj)?);
         JsFuture::from(promise).await?;
         Ok(())
+    }
+
+    /// Get information about the connected node and what WebLN methods it supports.
+    pub async fn get_info(&self) -> Result<GetInfoResponse, Error> {
+        let func: Function = self.get_func(&self.webln_obj, GET_INFO)?;
+        let promise: Promise = Promise::resolve(&func.call0(&self.webln_obj)?);
+        let result: JsValue = JsFuture::from(promise).await?;
+        let get_info_obj: Object = result.dyn_into()?;
+
+        let node_obj: Object = self.get_value_by_key(&get_info_obj, "node")?.dyn_into()?;
+
+        // Extract data
+        let alias: Option<String> = self.get_value_by_key(&node_obj, "alias")?.as_string();
+        let pubkey: Option<String> = self.get_value_by_key(&node_obj, "pubkey")?.as_string();
+        let color: Option<String> = self.get_value_by_key(&node_obj, "color")?.as_string();
+        let methods_array: Array = self.get_value_by_key(&get_info_obj, "methods")?.into();
+        let methods: Vec<GetInfoMethod> = methods_array
+            .into_iter()
+            .filter_map(|m| m.as_string())
+            .map(GetInfoMethod::from)
+            .collect();
+
+        Ok(GetInfoResponse {
+            node: GetInfoNode {
+                alias,
+                pubkey,
+                color,
+            },
+            methods,
+        })
     }
 }

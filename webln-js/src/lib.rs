@@ -5,10 +5,12 @@
 #![allow(non_snake_case)]
 #![allow(clippy::new_without_default)]
 
+use get_info::JsGetInfoResponse;
 use wasm_bindgen::prelude::*;
 use webln::WebLN;
 
 pub mod error;
+pub mod get_info;
 
 use self::error::{into_err, Result};
 
@@ -45,5 +47,11 @@ impl JsWebLN {
     /// After that you are free to call any of the other API methods.
     pub async fn enable(&self) -> Result<()> {
         self.inner.enable().await.map_err(into_err)
+    }
+
+    /// Get information about the connected node and what WebLN methods it supports.
+    #[wasm_bindgen(js_name = getInfo)]
+    pub async fn get_info(&self) -> Result<JsGetInfoResponse> {
+        Ok(self.inner.get_info().await.map_err(into_err)?.into())
     }
 }
