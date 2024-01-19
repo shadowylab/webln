@@ -5,14 +5,20 @@
 #![allow(non_snake_case)]
 #![allow(clippy::new_without_default)]
 
-use get_info::JsGetInfoResponse;
+use std::ops::Deref;
+
 use wasm_bindgen::prelude::*;
 use webln::WebLN;
 
 pub mod error;
 pub mod get_info;
+pub mod keysend;
+pub mod send_payment;
 
 use self::error::{into_err, Result};
+use self::get_info::JsGetInfoResponse;
+use self::keysend::JsKeysendArgs;
+use self::send_payment::JsSendPaymentResponse;
 
 #[wasm_bindgen(start)]
 pub fn start() {
@@ -53,5 +59,16 @@ impl JsWebLN {
     #[wasm_bindgen(js_name = getInfo)]
     pub async fn get_info(&self) -> Result<JsGetInfoResponse> {
         Ok(self.inner.get_info().await.map_err(into_err)?.into())
+    }
+
+    /// Request the user to send a keysend payment.
+    /// This is a spontaneous payment that does not require an invoice and only needs a destination public key and and amount.
+    pub async fn keysend(&self, args: &JsKeysendArgs) -> Result<JsSendPaymentResponse> {
+        Ok(self
+            .inner
+            .keysend(args.deref())
+            .await
+            .map_err(into_err)?
+            .into())
     }
 }

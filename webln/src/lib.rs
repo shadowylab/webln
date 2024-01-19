@@ -3,9 +3,12 @@
 
 //! WebLN - Lightning Web Standard
 
+pub extern crate secp256k1;
+
 use core::fmt;
 
 use js_sys::{Array, Function, Object, Promise, Reflect};
+use secp256k1::PublicKey;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::Window;
@@ -13,6 +16,7 @@ use web_sys::Window;
 pub const IS_ENABLED: &str = "isEnabled";
 pub const ENABLE: &str = "enable";
 pub const GET_INFO: &str = "getInfo";
+pub const KEYSEND: &str = "keysend";
 
 /// WebLN error
 #[derive(Debug)]
@@ -84,7 +88,7 @@ where
             IS_ENABLED => Self::IsEnabled,
             ENABLE => Self::Enable,
             GET_INFO => Self::GetInfo,
-            "keysend" => Self::Keysend,
+            KEYSEND => Self::Keysend,
             "makeInvoice" => Self::MakeInvoice,
             "sendPayment" => Self::SendPayment,
             "sendPaymentAsync" => Self::SendPaymentAsync,
@@ -106,7 +110,7 @@ impl fmt::Display for GetInfoMethod {
             Self::IsEnabled => write!(f, "{IS_ENABLED}"),
             Self::Enable => write!(f, "{ENABLE}"),
             Self::GetInfo => write!(f, "{GET_INFO}"),
-            Self::Keysend => write!(f, "keysend"),
+            Self::Keysend => write!(f, "{KEYSEND}"),
             Self::MakeInvoice => write!(f, "makeInvoice"),
             Self::SendPayment => write!(f, "sendPayment"),
             Self::SendPaymentAsync => write!(f, "sendPaymentAsync"),
@@ -126,6 +130,23 @@ impl fmt::Display for GetInfoMethod {
 pub struct GetInfoResponse {
     pub node: GetInfoNode,
     pub methods: Vec<GetInfoMethod>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct KeysendArgs {
+    /// Public key of the destination node.
+    pub destination: PublicKey,
+    /// Amount in SAT
+    pub amount: u64,
+    // TODO: add TLVRegistry enum
+    // The key should be a stringified integer from the <https://github.com/satoshisstream/satoshis.stream/blob/main/TLV_registry.md>.
+    // The value should be an unencoded, plain string.
+    // pub custom: Option<HashMap<String, String>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SendPaymentResponse {
+    pub preimage: String,
 }
 
 /// WebLN instance
@@ -212,6 +233,35 @@ impl WebLN {
                 color,
             },
             methods,
+        })
+    }
+
+    /// Request the user to send a keysend payment.
+    /// This is a spontaneous payment that does not require an invoice and only needs a destination public key and and amount.
+    pub async fn keysend(&self, args: &KeysendArgs) -> Result<SendPaymentResponse, Error> {
+        let func: Function = self.get_func(&self.webln_obj, KEYSEND)?;
+
+        let keysend_obj = Object::new();
+        Reflect::set(
+            &keysend_obj,
+            &JsValue::from_str("destination"),
+            &args.destination.to_string().into(),
+        )?;
+        Reflect::set(
+            &keysend_obj,
+            &JsValue::from_str("amount"),
+            &args.amount.to_string().into(),
+        )?;
+
+        let promise: Promise = Promise::resolve(&func.call1(&self.webln_obj, &keysend_obj.into())?);
+        let result: JsValue = JsFuture::from(promise).await?;
+        let send_payment_obj: Object = result.dyn_into()?;
+
+        Ok(SendPaymentResponse {
+            preimage: self
+                .get_value_by_key(&send_payment_obj, "preimage")?
+                .as_string()
+                .ok_or_else(|| Error::TypeMismatch(String::from("expected a string [preimage]")))?,
         })
     }
 }
