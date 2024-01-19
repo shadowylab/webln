@@ -3,8 +3,14 @@
 
 //! WebLN - Lightning Web Standard
 
+#![cfg_attr(not(feature = "std"), no_std)]
+
+extern crate alloc;
+
 pub extern crate secp256k1;
 
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 use core::fmt;
 
 use js_sys::{Array, Function, Object, Promise, Reflect};
@@ -25,7 +31,7 @@ pub const SEND_PAYMENT_ASYNC: &str = "sendPaymentAsync";
 #[derive(Debug)]
 pub enum Error {
     /// Generic WASM error
-    Wasm(JsValue),
+    Wasm(String),
     /// Impossible to get window
     NoGlobalWindowObject,
     /// Impossible to get window
@@ -34,25 +40,47 @@ pub enum Error {
     ObjectKeyNotFound(String),
     /// Invalid type: expected a string
     TypeMismatch(String),
+    // User rejected
+    UserRejected,
+    /// Empty invoice
+    EmptyInvoice,
+    /// Something's gone wrong
+    SomethingGoneWrong,
+    /// Unknown
+    Unknown,
 }
 
+#[cfg(feature = "std")]
 impl std::error::Error for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Wasm(e) => write!(f, "{e:?}"),
+            Self::Wasm(e) => write!(f, "{e}"),
             Self::NoGlobalWindowObject => write!(f, "No global `window` object"),
             Self::NamespaceNotFound(n) => write!(f, "`{n}` namespace not found"),
             Self::ObjectKeyNotFound(n) => write!(f, "Key `{n}` not found in object"),
             Self::TypeMismatch(e) => write!(f, "Type mismatch: {e}"),
+            Self::UserRejected => write!(f, "User rejected"),
+            Self::EmptyInvoice => write!(f, "Empty invoice"),
+            Self::SomethingGoneWrong => write!(f, "Something's gone wrong"),
+            Self::Unknown => write!(f, "Unknown error"),
         }
     }
 }
 
 impl From<JsValue> for Error {
     fn from(e: JsValue) -> Self {
-        Self::Wasm(e)
+        match e.as_string() {
+            Some(error) => {
+                if error.contains("User rejected") {
+                    Self::UserRejected
+                } else {
+                    Self::Wasm(error)
+                }
+            }
+            None => Self::Unknown,
+        }
     }
 }
 
@@ -312,9 +340,12 @@ impl WebLN {
         let func: Function = self.get_func(&self.webln_obj, GET_INFO)?;
         let promise: Promise = Promise::resolve(&func.call0(&self.webln_obj)?);
         let result: JsValue = JsFuture::from(promise).await?;
-        let get_info_obj: Object = result.dyn_into()?;
+        let get_info_obj: Object = result.dyn_into().map_err(|_| Error::SomethingGoneWrong)?;
 
-        let node_obj: Object = self.get_value_by_key(&get_info_obj, "node")?.dyn_into()?;
+        let node_obj: Object = self
+            .get_value_by_key(&get_info_obj, "node")?
+            .dyn_into()
+            .map_err(|_| Error::SomethingGoneWrong)?;
 
         // Extract data
         let alias: Option<String> = self.get_value_by_key(&node_obj, "alias")?.as_string();
@@ -356,7 +387,7 @@ impl WebLN {
 
         let promise: Promise = Promise::resolve(&func.call1(&self.webln_obj, &keysend_obj.into())?);
         let result: JsValue = JsFuture::from(promise).await?;
-        let send_payment_obj: Object = result.dyn_into()?;
+        let send_payment_obj: Object = result.dyn_into().map_err(|_| Error::SomethingGoneWrong)?;
 
         Ok(SendPaymentResponse {
             preimage: self
@@ -378,8 +409,8 @@ impl WebLN {
         let promise: Promise =
             Promise::resolve(&func.call1(&self.webln_obj, &request_invoice_obj.into())?);
         let result: JsValue = JsFuture::from(promise).await?;
-        let request_invoice_response_obj: Object = result.dyn_into()?;
-
+        let request_invoice_response_obj: Object =
+            result.dyn_into().map_err(|_| Error::SomethingGoneWrong)?;
         Ok(RequestInvoiceResponse {
             invoice: self
                 .get_value_by_key(&request_invoice_response_obj, "paymentRequest")?
@@ -392,10 +423,16 @@ impl WebLN {
 
     /// Request that the user sends a payment for an invoice.
     pub async fn send_payment(&self, invoice: String) -> Result<SendPaymentResponse, Error> {
+        // `lightning-invoice` increase too much the WASM binary size
+        // For now just check if invoice is not empty
+        if invoice.is_empty() {
+            return Err(Error::EmptyInvoice);
+        }
+
         let func: Function = self.get_func(&self.webln_obj, SEND_PAYMENT)?;
         let promise: Promise = Promise::resolve(&func.call1(&self.webln_obj, &invoice.into())?);
         let result: JsValue = JsFuture::from(promise).await?;
-        let send_payment_obj: Object = result.dyn_into()?;
+        let send_payment_obj: Object = result.dyn_into().map_err(|_| Error::SomethingGoneWrong)?;
         Ok(SendPaymentResponse {
             preimage: self
                 .get_value_by_key(&send_payment_obj, "preimage")?
@@ -409,9 +446,20 @@ impl WebLN {
     /// This is useful when paying HOLD Invoices. There is no guarantee that the payment will be successfully sent to the receiver.
     /// It's up to the receiver to check whether or not the invoice has been paid.
     pub async fn send_payment_async(&self, invoice: String) -> Result<(), Error> {
+        // `lightning-invoice` increase too much the WASM binary size
+        // For now just check if invoice is not empty
+        if invoice.is_empty() {
+            return Err(Error::EmptyInvoice);
+        }
+
         let func: Function = self.get_func(&self.webln_obj, SEND_PAYMENT_ASYNC)?;
         let promise: Promise = Promise::resolve(&func.call1(&self.webln_obj, &invoice.into())?);
-        JsFuture::from(promise).await?;
+        let result: JsValue = JsFuture::from(promise).await?;
+
+        if !result.is_object() {
+            return Err(Error::SomethingGoneWrong);
+        }
+
         Ok(())
     }
 }

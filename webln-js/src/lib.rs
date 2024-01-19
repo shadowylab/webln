@@ -4,8 +4,12 @@
 #![allow(clippy::drop_non_drop)]
 #![allow(non_snake_case)]
 #![allow(clippy::new_without_default)]
+#![no_std]
 
-use std::ops::Deref;
+extern crate alloc;
+
+use alloc::string::String;
+use core::ops::Deref;
 
 use wasm_bindgen::prelude::*;
 use webln::WebLN;

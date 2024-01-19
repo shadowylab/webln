@@ -1,6 +1,9 @@
 // Copyright (c) 2024 Yuki Kishimoto
 // Distributed under the MIT software license
 
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+
 use wasm_bindgen::prelude::*;
 use webln::GetInfoResponse;
 

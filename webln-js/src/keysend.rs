@@ -1,8 +1,9 @@
 // Copyright (c) 2024 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::ops::Deref;
-use std::str::FromStr;
+use alloc::string::String;
+use core::ops::Deref;
+use core::str::FromStr;
 
 use wasm_bindgen::prelude::*;
 use webln::secp256k1::PublicKey;

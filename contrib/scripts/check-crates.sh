@@ -25,6 +25,7 @@ fi
 
 buildargs=(
     "-p webln --target wasm32-unknown-unknown"
+    "-p webln --no-default-features --target wasm32-unknown-unknown"
 )
 
 for arg in "${buildargs[@]}"; do

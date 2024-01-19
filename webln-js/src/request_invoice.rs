@@ -1,7 +1,8 @@
 // Copyright (c) 2024 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use std::ops::Deref;
+use alloc::string::String;
+use core::ops::Deref;
 
 use wasm_bindgen::prelude::*;
 use webln::{RequestInvoiceArgs, RequestInvoiceResponse};
