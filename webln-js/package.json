@@ -32,7 +32,7 @@
   "main": "pkg/webln_js.js",
   "types": "pkg/webln_js.d.ts",
   "files": [
-      "pkg/webln_js_bg.wasm",
+      "pkg/webln_js_bg.wasm.js",
       "pkg/webln_js_bg.wasm.d.ts",
       "pkg/webln_js.js",
       "pkg/webln_js.d.ts"
