@@ -321,6 +321,15 @@ pub struct SignMessageResponse {
     pub signature: String,
 }
 
+/// Balance Response
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
+pub struct BalanceResponse {
+    /// Balance
+    pub balance: f64,
+    /// Currency
+    pub currency: Option<String>,
+}
+
 /// WebLN instance
 #[derive(Debug, Clone)]
 pub struct WebLN {
@@ -538,5 +547,25 @@ impl WebLN {
             message: message.to_string(),
             signature,
         })
+    }
+
+    /// Fetch the balance of the current account.
+    pub async fn get_balance(&self) -> Result<BalanceResponse, Error> {
+        let func: Function = self.get_func(&self.webln_obj, GET_BALANCE)?;
+        let promise: Promise = Promise::resolve(&func.call0(&self.webln_obj)?);
+        let result: JsValue = JsFuture::from(promise).await?;
+        let balance_response_obj: Object =
+            result.dyn_into().map_err(|_| Error::SomethingGoneWrong)?;
+
+        // Extract data
+        let balance: f64 = self
+            .get_value_by_key(&balance_response_obj, "balance")?
+            .as_f64()
+            .ok_or_else(|| Error::TypeMismatch(String::from("expected a number [balance]")))?;
+        let currency: Option<String> = self
+            .get_value_by_key(&balance_response_obj, "currency")?
+            .as_string();
+
+        Ok(BalanceResponse { balance, currency })
     }
 }

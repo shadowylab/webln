@@ -14,6 +14,7 @@ use core::ops::Deref;
 use wasm_bindgen::prelude::*;
 use webln::WebLN;
 
+pub mod balance;
 pub mod error;
 pub mod get_info;
 pub mod keysend;
@@ -21,6 +22,7 @@ pub mod request_invoice;
 pub mod send_payment;
 pub mod sign_message;
 
+use self::balance::JsBalanceResponse;
 use self::error::{into_err, Result};
 use self::get_info::JsGetInfoResponse;
 use self::keysend::JsKeysendArgs;
@@ -126,5 +128,11 @@ impl JsWebLN {
             .await
             .map_err(into_err)?
             .into())
+    }
+
+    /// Fetch the balance of the current account.
+    #[wasm_bindgen(js_name = getBalance)]
+    pub async fn get_balance(&self) -> Result<JsBalanceResponse> {
+        Ok(self.inner.get_balance().await.map_err(into_err)?.into())
     }
 }
