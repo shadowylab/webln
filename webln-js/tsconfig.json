@@ -1,0 +1,9 @@
+{
+    "compilerOptions": {
+        "strict": true
+    },
+    "typedocOptions": {
+        "entryPoints": ["pkg/webln_js.d.ts"],
+        "readme": "README.md"
+    }
+}

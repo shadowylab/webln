@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "webln",
+    "webln-js",
 ]
 resolver = "2"
 
@@ -12,6 +13,9 @@ license = "MIT"
 rust-version = "1.64.0" # TODO: check MSRV
 
 [workspace.dependencies]
+js-sys = "0.3"
+wasm-bindgen = { version = "0.2", default-features = false }
+wasm-bindgen-futures = "0.4"
 
 [profile.release]
 lto = true

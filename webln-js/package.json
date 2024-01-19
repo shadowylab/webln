@@ -1,0 +1,51 @@
+{
+  "name": "@shadowylab/webln",
+  "version": "0.1.0",
+  "description": "WebLN - Lightning Web Standard",
+  "keywords": [
+    "webln",
+    "lightning",
+    "bitcoin",
+    "rust",
+    "bindings"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/shadowylab/webln",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shadowylab/webln.git"
+  },
+  "bugs": {
+    "url": "https://github.com/shadowylab/webln/issues"
+  },
+  "author": {
+    "name": "Yuki Kishimoto",
+    "email": "yukikishimoto@protonmail.com",
+    "url": "https://github.com/yukibtc"
+  },
+  "funding": [
+    {
+      "type": "individual",
+      "url": "https://getalby.com/p/yuki"
+    }
+  ],
+  "main": "pkg/webln_js.js",
+  "types": "pkg/webln_js.d.ts",
+  "files": [
+      "pkg/webln_js_bg.wasm",
+      "pkg/webln_js_bg.wasm.d.ts",
+      "pkg/webln_js.js",
+      "pkg/webln_js.d.ts"
+  ],
+  "devDependencies": {
+    "wasm-pack": "^0.10.2"
+  },
+  "engines": {
+    "node": ">= 10"
+  },
+  "scripts": {
+    "build": "WASM_PACK_ARGS=--release ./scripts/build.sh",
+    "build:dev": "WASM_PACK_ARGS=--dev ./scripts/build.sh",
+    "package": "npm run build && npm pack"
+  }
+}

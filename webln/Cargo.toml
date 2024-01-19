@@ -12,7 +12,7 @@ rust-version.workspace = true
 keywords = ["webln", "lightning", "bitcoin"]
 
 [dependencies]
-js-sys = "0.3"
-wasm-bindgen = { version = "0.2", default-features = false }
-wasm-bindgen-futures = "0.4"
+js-sys.workspace = true
+wasm-bindgen.workspace = true
+wasm-bindgen-futures.workspace = true
 web-sys = { version = "0.3", default-features = false, features = ["Window"] }
