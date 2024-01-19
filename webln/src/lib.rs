@@ -2,7 +2,12 @@
 // Distributed under the MIT software license
 
 //! WebLN - Lightning Web Standard
+//!
+//! <https://webln.guide>
 
+#![forbid(unsafe_code)]
+#![warn(missing_docs)]
+#![warn(rustdoc::bare_urls)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 extern crate alloc;
@@ -19,13 +24,13 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::Window;
 
-pub const IS_ENABLED: &str = "isEnabled";
-pub const ENABLE: &str = "enable";
-pub const GET_INFO: &str = "getInfo";
-pub const KEYSEND: &str = "keysend";
-pub const MAKE_INVOICE: &str = "makeInvoice";
-pub const SEND_PAYMENT: &str = "sendPayment";
-pub const SEND_PAYMENT_ASYNC: &str = "sendPaymentAsync";
+const IS_ENABLED: &str = "isEnabled";
+const ENABLE: &str = "enable";
+const GET_INFO: &str = "getInfo";
+const KEYSEND: &str = "keysend";
+const MAKE_INVOICE: &str = "makeInvoice";
+const SEND_PAYMENT: &str = "sendPayment";
+const SEND_PAYMENT_ASYNC: &str = "sendPaymentAsync";
 
 /// WebLN error
 #[derive(Debug)]
@@ -40,7 +45,7 @@ pub enum Error {
     ObjectKeyNotFound(String),
     /// Invalid type: expected a string
     TypeMismatch(String),
-    // User rejected
+    /// User rejected
     UserRejected,
     /// Empty invoice
     EmptyInvoice,
@@ -84,13 +89,19 @@ impl From<JsValue> for Error {
     }
 }
 
+/// Get Info Node Response
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GetInfoNode {
+    /// Alias
     pub alias: Option<String>,
+    /// Hex encoded public key
     pub pubkey: Option<String>,
+    /// Color
     pub color: Option<String>,
 }
 
+/// Get Info Method Response
+#[allow(missing_docs)]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum GetInfoMethod {
     IsEnabled,
@@ -157,12 +168,16 @@ impl fmt::Display for GetInfoMethod {
     }
 }
 
+/// Get Info Response
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GetInfoResponse {
+    /// Node
     pub node: GetInfoNode,
+    /// Methods list
     pub methods: Vec<GetInfoMethod>,
 }
 
+/// Keysend args
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct KeysendArgs {
     /// Public key of the destination node.
@@ -175,8 +190,10 @@ pub struct KeysendArgs {
     // pub custom: Option<HashMap<String, String>>,
 }
 
+/// Send Payment Response
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SendPaymentResponse {
+    /// Preimage
     pub preimage: String,
 }
 
@@ -185,38 +202,49 @@ pub struct SendPaymentResponse {
 /// **All amounts are denominated in SAT.**
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RequestInvoiceArgs {
+    /// Amount
     pub amount: Option<u64>,
+    /// Default amount
     pub default_amount: Option<u64>,
+    /// Minimum amount
     pub minimum_amount: Option<u64>,
+    /// Maximum amount
     pub maximum_amount: Option<u64>,
+    /// Default memo
     pub default_memo: Option<String>,
 }
 
 impl RequestInvoiceArgs {
+    /// New empty request invoice
     pub fn new() -> Self {
         Self::default()
     }
 
+    /// Set amount
     pub fn amount(mut self, amount: u64) -> Self {
         self.amount = Some(amount);
         self
     }
 
+    /// Set default amount
     pub fn default_amount(mut self, default_amount: u64) -> Self {
         self.default_amount = Some(default_amount);
         self
     }
 
+    /// Set minimum amount
     pub fn minimum_amount(mut self, minimum_amount: u64) -> Self {
         self.minimum_amount = Some(minimum_amount);
         self
     }
 
+    /// Set maximum amount
     pub fn maximum_amount(mut self, maximum_amount: u64) -> Self {
         self.maximum_amount = Some(maximum_amount);
         self
     }
 
+    /// Set default memo
     pub fn default_memo(mut self, default_memo: String) -> Self {
         self.default_memo = Some(default_memo);
         self
@@ -273,8 +301,10 @@ impl TryFrom<&RequestInvoiceArgs> for Object {
     }
 }
 
+/// Request Invoice Response
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RequestInvoiceResponse {
+    /// BOLT-11 invoice
     pub invoice: String,
 }
 
