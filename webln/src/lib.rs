@@ -81,7 +81,7 @@ impl WebLN {
             .map_err(|_| Error::ObjectKeyNotFound(key.to_string()))
     } */
 
-    /// Check if `webln` is enabled without explicitly enabling it through `webln.enable()` 
+    /// Check if `webln` is enabled without explicitly enabling it through `webln.enable()`
     /// (which may cause a confirmation popup in some providers)
     pub async fn is_enabled(&self) -> Result<bool, Error> {
         let func: Function = self.get_func(&self.webln_obj, "isEnabled")?;

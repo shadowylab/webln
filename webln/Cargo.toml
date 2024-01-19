@@ -1,0 +1,18 @@
+[package]
+name = "webln"
+version = "0.1.0"
+edition = "2021"
+description = "WebLN - Lightning Web Standard"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+license.workspace = true
+readme = "README.md"
+rust-version.workspace = true
+keywords = ["webln", "lightning", "bitcoin"]
+
+[dependencies]
+js-sys = "0.3"
+wasm-bindgen = { version = "0.2", default-features = false }
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", default-features = false, features = ["Window"] }
