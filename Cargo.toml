@@ -7,8 +7,8 @@ resolver = "2"
 
 [workspace.package]
 authors = ["Yuki Kishimoto <yukikishimoto@protonmail.com>"]
-homepage = "https://github.com/yukibtc/rust-webln"
-repository = "https://github.com/yukibtc/rust-webln.git"
+homepage = "https://github.com/shadowylab/webln"
+repository = "https://github.com/shadowylab/webln.git"
 license = "MIT"
 rust-version = "1.64.0" # TODO: check MSRV
 

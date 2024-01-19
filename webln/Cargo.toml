@@ -14,6 +14,6 @@ keywords = ["webln", "lightning", "bitcoin"]
 [dependencies]
 js-sys.workspace = true
 secp256k1 = { version = "0.27", default-features = false, features = ["std"] }
-wasm-bindgen = { workspace = true, features = ["std"]}
+wasm-bindgen = { workspace = true, features = ["std"] }
 wasm-bindgen-futures.workspace = true
 web-sys = { version = "0.3", default-features = false, features = ["Window"] }
