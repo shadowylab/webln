@@ -14,6 +14,7 @@ extern crate alloc;
 
 pub extern crate secp256k1;
 
+use alloc::format;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
@@ -51,8 +52,6 @@ pub enum Error {
     EmptyInvoice,
     /// Something's gone wrong
     SomethingGoneWrong,
-    /// Unknown
-    Unknown,
 }
 
 #[cfg(feature = "std")]
@@ -69,22 +68,17 @@ impl fmt::Display for Error {
             Self::UserRejected => write!(f, "User rejected"),
             Self::EmptyInvoice => write!(f, "Empty invoice"),
             Self::SomethingGoneWrong => write!(f, "Something's gone wrong"),
-            Self::Unknown => write!(f, "Unknown error"),
         }
     }
 }
 
 impl From<JsValue> for Error {
     fn from(e: JsValue) -> Self {
-        match e.as_string() {
-            Some(error) => {
-                if error.contains("User rejected") {
-                    Self::UserRejected
-                } else {
-                    Self::Wasm(error)
-                }
-            }
-            None => Self::Unknown,
+        let error: String = format!("{e:?}");
+        if error.contains("User rejected") {
+            Self::UserRejected
+        } else {
+            Self::Wasm(error)
         }
     }
 }
