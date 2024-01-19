@@ -17,7 +17,7 @@ pub const IS_ENABLED: &str = "isEnabled";
 pub const ENABLE: &str = "enable";
 pub const GET_INFO: &str = "getInfo";
 pub const KEYSEND: &str = "keysend";
-// pub const MAKE_INVOICE: &str = "makeInvoice";
+pub const MAKE_INVOICE: &str = "makeInvoice";
 pub const SEND_PAYMENT: &str = "sendPayment";
 pub const SEND_PAYMENT_ASYNC: &str = "sendPaymentAsync";
 
@@ -92,7 +92,7 @@ where
             ENABLE => Self::Enable,
             GET_INFO => Self::GetInfo,
             KEYSEND => Self::Keysend,
-            "makeInvoice" => Self::MakeInvoice,
+            MAKE_INVOICE => Self::MakeInvoice,
             SEND_PAYMENT => Self::SendPayment,
             SEND_PAYMENT_ASYNC => Self::SendPaymentAsync,
             "signMessage" => Self::SignMessage,
@@ -114,7 +114,7 @@ impl fmt::Display for GetInfoMethod {
             Self::Enable => write!(f, "{ENABLE}"),
             Self::GetInfo => write!(f, "{GET_INFO}"),
             Self::Keysend => write!(f, "{KEYSEND}"),
-            Self::MakeInvoice => write!(f, "makeInvoice"),
+            Self::MakeInvoice => write!(f, "{MAKE_INVOICE}"),
             Self::SendPayment => write!(f, "{SEND_PAYMENT}"),
             Self::SendPaymentAsync => write!(f, "{SEND_PAYMENT_ASYNC}"),
             Self::SignMessage => write!(f, "signMessage"),
@@ -150,6 +150,104 @@ pub struct KeysendArgs {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct SendPaymentResponse {
     pub preimage: String,
+}
+
+/// Request invoice args
+///
+/// **All amounts are denominated in SAT.**
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct RequestInvoiceArgs {
+    pub amount: Option<u64>,
+    pub default_amount: Option<u64>,
+    pub minimum_amount: Option<u64>,
+    pub maximum_amount: Option<u64>,
+    pub default_memo: Option<String>,
+}
+
+impl RequestInvoiceArgs {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn amount(mut self, amount: u64) -> Self {
+        self.amount = Some(amount);
+        self
+    }
+
+    pub fn default_amount(mut self, default_amount: u64) -> Self {
+        self.default_amount = Some(default_amount);
+        self
+    }
+
+    pub fn minimum_amount(mut self, minimum_amount: u64) -> Self {
+        self.minimum_amount = Some(minimum_amount);
+        self
+    }
+
+    pub fn maximum_amount(mut self, maximum_amount: u64) -> Self {
+        self.maximum_amount = Some(maximum_amount);
+        self
+    }
+
+    pub fn default_memo(mut self, default_memo: String) -> Self {
+        self.default_memo = Some(default_memo);
+        self
+    }
+}
+
+impl TryFrom<&RequestInvoiceArgs> for Object {
+    type Error = Error;
+
+    fn try_from(args: &RequestInvoiceArgs) -> Result<Self, Self::Error> {
+        let obj = Self::new();
+
+        if let Some(amount) = args.amount {
+            Reflect::set(
+                &obj,
+                &JsValue::from_str("amount"),
+                &amount.to_string().into(),
+            )?;
+        }
+
+        if let Some(default_amount) = args.default_amount {
+            Reflect::set(
+                &obj,
+                &JsValue::from_str("defaultAmount"),
+                &default_amount.to_string().into(),
+            )?;
+        }
+
+        if let Some(minimum_amount) = args.minimum_amount {
+            Reflect::set(
+                &obj,
+                &JsValue::from_str("minimumAmount"),
+                &minimum_amount.to_string().into(),
+            )?;
+        }
+
+        if let Some(maximum_amount) = args.maximum_amount {
+            Reflect::set(
+                &obj,
+                &JsValue::from_str("maximumAmount"),
+                &maximum_amount.to_string().into(),
+            )?;
+        }
+
+        if let Some(default_memo) = &args.default_memo {
+            Reflect::set(
+                &obj,
+                &JsValue::from_str("defaultMemo"),
+                &default_memo.into(),
+            )?;
+        }
+
+        Ok(obj)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct RequestInvoiceResponse {
+    pub invoice: String,
 }
 
 /// WebLN instance
@@ -268,7 +366,29 @@ impl WebLN {
         })
     }
 
-    // TODO: add `make_invoice`
+    /// Request that the user creates an invoice to be used by the web app
+    pub async fn make_invoice(
+        &self,
+        args: &RequestInvoiceArgs,
+    ) -> Result<RequestInvoiceResponse, Error> {
+        let func: Function = self.get_func(&self.webln_obj, MAKE_INVOICE)?;
+
+        let request_invoice_obj: Object = args.try_into()?;
+
+        let promise: Promise =
+            Promise::resolve(&func.call1(&self.webln_obj, &request_invoice_obj.into())?);
+        let result: JsValue = JsFuture::from(promise).await?;
+        let request_invoice_response_obj: Object = result.dyn_into()?;
+
+        Ok(RequestInvoiceResponse {
+            invoice: self
+                .get_value_by_key(&request_invoice_response_obj, "paymentRequest")?
+                .as_string()
+                .ok_or_else(|| {
+                    Error::TypeMismatch(String::from("expected a string [paymentRequest]"))
+                })?,
+        })
+    }
 
     /// Request that the user sends a payment for an invoice.
     pub async fn send_payment(&self, invoice: String) -> Result<SendPaymentResponse, Error> {

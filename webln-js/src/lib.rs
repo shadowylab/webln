@@ -13,11 +13,13 @@ use webln::WebLN;
 pub mod error;
 pub mod get_info;
 pub mod keysend;
+pub mod request_invoice;
 pub mod send_payment;
 
 use self::error::{into_err, Result};
 use self::get_info::JsGetInfoResponse;
 use self::keysend::JsKeysendArgs;
+use self::request_invoice::{JsRequestInvoiceArgs, JsRequestInvoiceResponse};
 use self::send_payment::JsSendPaymentResponse;
 
 #[wasm_bindgen(start)]
@@ -72,7 +74,19 @@ impl JsWebLN {
             .into())
     }
 
-    // TODO: add `make_invoice`
+    /// Request that the user creates an invoice to be used by the web app
+    #[wasm_bindgen(js_name = makeInvoice)]
+    pub async fn make_invoice(
+        &self,
+        args: &JsRequestInvoiceArgs,
+    ) -> Result<JsRequestInvoiceResponse> {
+        Ok(self
+            .inner
+            .make_invoice(args.deref())
+            .await
+            .map_err(into_err)?
+            .into())
+    }
 
     /// Request that the user sends a payment for an invoice.
     #[wasm_bindgen(js_name = sendPayment)]
