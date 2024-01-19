@@ -19,10 +19,12 @@ impl From<BalanceResponse> for JsBalanceResponse {
 
 #[wasm_bindgen(js_class = BalanceResponse)]
 impl JsBalanceResponse {
+    #[wasm_bindgen(getter)]
     pub fn balance(&self) -> f64 {
         self.inner.balance
     }
 
+    #[wasm_bindgen(getter)]
     pub fn currency(&self) -> Option<String> {
         self.inner.currency.clone()
     }
