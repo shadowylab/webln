@@ -173,7 +173,7 @@ pub struct GetInfoResponse {
 }
 
 /// Keysend args
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct KeysendArgs {
     /// Public key of the destination node.
     pub destination: PublicKey,
@@ -240,8 +240,11 @@ impl RequestInvoiceArgs {
     }
 
     /// Set default memo
-    pub fn default_memo(mut self, default_memo: String) -> Self {
-        self.default_memo = Some(default_memo);
+    pub fn default_memo<S>(mut self, default_memo: S) -> Self
+    where
+        S: Into<String>,
+    {
+        self.default_memo = Some(default_memo.into());
         self
     }
 }
@@ -456,7 +459,12 @@ impl WebLN {
     }
 
     /// Request that the user sends a payment for an invoice.
-    pub async fn send_payment(&self, invoice: String) -> Result<SendPaymentResponse, Error> {
+    pub async fn send_payment<S>(&self, invoice: S) -> Result<SendPaymentResponse, Error>
+    where
+        S: AsRef<str>,
+    {
+        let invoice: &str = invoice.as_ref();
+
         // `lightning-invoice` increase too much the WASM binary size
         // For now just check if invoice is not empty
         if invoice.is_empty() {
@@ -479,7 +487,12 @@ impl WebLN {
     /// The payment will only be initiated and will not wait for a preimage to be returned.
     /// This is useful when paying HOLD Invoices. There is no guarantee that the payment will be successfully sent to the receiver.
     /// It's up to the receiver to check whether or not the invoice has been paid.
-    pub async fn send_payment_async(&self, invoice: String) -> Result<(), Error> {
+    pub async fn send_payment_async<S>(&self, invoice: S) -> Result<(), Error>
+    where
+        S: AsRef<str>,
+    {
+        let invoice: &str = invoice.as_ref();
+
         // `lightning-invoice` increase too much the WASM binary size
         // For now just check if invoice is not empty
         if invoice.is_empty() {
@@ -498,7 +511,11 @@ impl WebLN {
     }
 
     /// Request that the user signs an arbitrary string message.
-    pub async fn sign_message(&self, message: String) -> Result<SignMessageResponse, Error> {
+    pub async fn sign_message<S>(&self, message: S) -> Result<SignMessageResponse, Error>
+    where
+        S: AsRef<str>,
+    {
+        let message: &str = message.as_ref();
         let func: Function = self.get_func(&self.webln_obj, SIGN_MESSAGE)?;
         let promise: Promise = Promise::resolve(&func.call1(&self.webln_obj, &message.into())?);
         let result: JsValue = JsFuture::from(promise).await?;
@@ -506,15 +523,14 @@ impl WebLN {
             result.dyn_into().map_err(|_| Error::SomethingGoneWrong)?;
 
         // Extract data
-        let message: String = self
-            .get_value_by_key(&sign_message_response_obj, "message")?
-            .as_string()
-            .ok_or_else(|| Error::TypeMismatch(String::from("expected a string [message]")))?;
         let signature: String = self
             .get_value_by_key(&sign_message_response_obj, "signature")?
             .as_string()
             .ok_or_else(|| Error::TypeMismatch(String::from("expected a string [signature]")))?;
 
-        Ok(SignMessageResponse { message, signature })
+        Ok(SignMessageResponse {
+            message: message.to_string(),
+            signature,
+        })
     }
 }
