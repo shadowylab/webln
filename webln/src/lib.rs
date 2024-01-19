@@ -33,6 +33,12 @@ const MAKE_INVOICE: &str = "makeInvoice";
 const SEND_PAYMENT: &str = "sendPayment";
 const SEND_PAYMENT_ASYNC: &str = "sendPaymentAsync";
 const SIGN_MESSAGE: &str = "signMessage";
+const VERIFY_MESSAGE: &str = "verifyMessage";
+const REQUEST: &str = "request";
+const LNURL: &str = "lnurl";
+const ON: &str = "on";
+const OFF: &str = "off";
+const GET_BALANCE: &str = "getBalance";
 
 /// WebLN error
 #[derive(Debug)]
@@ -130,12 +136,12 @@ where
             SEND_PAYMENT => Self::SendPayment,
             SEND_PAYMENT_ASYNC => Self::SendPaymentAsync,
             SIGN_MESSAGE => Self::SignMessage,
-            "verifyMessage" => Self::VerifyMessage,
-            "request" => Self::Request,
-            "lnurl" => Self::Lnurl,
-            "on" => Self::On,
-            "off" => Self::Off,
-            "getBalance" => Self::GetBalance,
+            VERIFY_MESSAGE => Self::VerifyMessage,
+            REQUEST => Self::Request,
+            LNURL => Self::Lnurl,
+            ON => Self::On,
+            OFF => Self::Off,
+            GET_BALANCE => Self::GetBalance,
             other => Self::Other(other.to_string()),
         }
     }
@@ -152,12 +158,12 @@ impl fmt::Display for GetInfoMethod {
             Self::SendPayment => write!(f, "{SEND_PAYMENT}"),
             Self::SendPaymentAsync => write!(f, "{SEND_PAYMENT_ASYNC}"),
             Self::SignMessage => write!(f, "{SIGN_MESSAGE}"),
-            Self::VerifyMessage => write!(f, "verifyMessage"),
-            Self::Request => write!(f, "request"),
-            Self::Lnurl => write!(f, "lnurl"),
-            Self::On => write!(f, "on"),
-            Self::Off => write!(f, "off"),
-            Self::GetBalance => write!(f, "getBalance"),
+            Self::VerifyMessage => write!(f, "{VERIFY_MESSAGE}"),
+            Self::Request => write!(f, "{REQUEST}"),
+            Self::Lnurl => write!(f, "{LNURL}"),
+            Self::On => write!(f, "{ON}"),
+            Self::Off => write!(f, "{OFF}"),
+            Self::GetBalance => write!(f, "{GET_BALANCE}"),
             Self::Other(other) => write!(f, "{other}"),
         }
     }
