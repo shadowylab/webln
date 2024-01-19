@@ -1,6 +1,7 @@
 # WebLN - Lightning Web Standard
 
 * [webln](./webln/): Rust implementation of WebLN
+* [webln-js](./webln-js/): WebLN for JavaScript
 
 ## License
 
