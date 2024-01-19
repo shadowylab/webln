@@ -17,6 +17,8 @@ pub const IS_ENABLED: &str = "isEnabled";
 pub const ENABLE: &str = "enable";
 pub const GET_INFO: &str = "getInfo";
 pub const KEYSEND: &str = "keysend";
+// pub const MAKE_INVOICE: &str = "makeInvoice";
+pub const SEND_PAYMENT: &str = "sendPayment";
 
 /// WebLN error
 #[derive(Debug)]
@@ -90,7 +92,7 @@ where
             GET_INFO => Self::GetInfo,
             KEYSEND => Self::Keysend,
             "makeInvoice" => Self::MakeInvoice,
-            "sendPayment" => Self::SendPayment,
+            SEND_PAYMENT => Self::SendPayment,
             "sendPaymentAsync" => Self::SendPaymentAsync,
             "signMessage" => Self::SignMessage,
             "verifyMessage" => Self::VerifyMessage,
@@ -112,7 +114,7 @@ impl fmt::Display for GetInfoMethod {
             Self::GetInfo => write!(f, "{GET_INFO}"),
             Self::Keysend => write!(f, "{KEYSEND}"),
             Self::MakeInvoice => write!(f, "makeInvoice"),
-            Self::SendPayment => write!(f, "sendPayment"),
+            Self::SendPayment => write!(f, "{SEND_PAYMENT}"),
             Self::SendPaymentAsync => write!(f, "sendPaymentAsync"),
             Self::SignMessage => write!(f, "signMessage"),
             Self::VerifyMessage => write!(f, "verifyMessage"),
@@ -257,6 +259,22 @@ impl WebLN {
         let result: JsValue = JsFuture::from(promise).await?;
         let send_payment_obj: Object = result.dyn_into()?;
 
+        Ok(SendPaymentResponse {
+            preimage: self
+                .get_value_by_key(&send_payment_obj, "preimage")?
+                .as_string()
+                .ok_or_else(|| Error::TypeMismatch(String::from("expected a string [preimage]")))?,
+        })
+    }
+
+    // TODO: add `make_invoice`
+
+    // Request that the user sends a payment for an invoice.
+    pub async fn send_payment(&self, invoice: String) -> Result<SendPaymentResponse, Error> {
+        let func: Function = self.get_func(&self.webln_obj, SEND_PAYMENT)?;
+        let promise: Promise = Promise::resolve(&func.call1(&self.webln_obj, &invoice.into())?);
+        let result: JsValue = JsFuture::from(promise).await?;
+        let send_payment_obj: Object = result.dyn_into()?;
         Ok(SendPaymentResponse {
             preimage: self
                 .get_value_by_key(&send_payment_obj, "preimage")?

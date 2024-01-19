@@ -71,4 +71,17 @@ impl JsWebLN {
             .map_err(into_err)?
             .into())
     }
+
+    // TODO: add `make_invoice`
+
+    // Request that the user sends a payment for an invoice.
+    #[wasm_bindgen(js_name = sendPayment)]
+    pub async fn send_payment(&self, invoice: String) -> Result<JsSendPaymentResponse> {
+        Ok(self
+            .inner
+            .send_payment(invoice)
+            .await
+            .map_err(into_err)?
+            .into())
+    }
 }
