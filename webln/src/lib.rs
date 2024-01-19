@@ -19,6 +19,7 @@ pub const GET_INFO: &str = "getInfo";
 pub const KEYSEND: &str = "keysend";
 // pub const MAKE_INVOICE: &str = "makeInvoice";
 pub const SEND_PAYMENT: &str = "sendPayment";
+pub const SEND_PAYMENT_ASYNC: &str = "sendPaymentAsync";
 
 /// WebLN error
 #[derive(Debug)]
@@ -93,7 +94,7 @@ where
             KEYSEND => Self::Keysend,
             "makeInvoice" => Self::MakeInvoice,
             SEND_PAYMENT => Self::SendPayment,
-            "sendPaymentAsync" => Self::SendPaymentAsync,
+            SEND_PAYMENT_ASYNC => Self::SendPaymentAsync,
             "signMessage" => Self::SignMessage,
             "verifyMessage" => Self::VerifyMessage,
             "request" => Self::Request,
@@ -115,7 +116,7 @@ impl fmt::Display for GetInfoMethod {
             Self::Keysend => write!(f, "{KEYSEND}"),
             Self::MakeInvoice => write!(f, "makeInvoice"),
             Self::SendPayment => write!(f, "{SEND_PAYMENT}"),
-            Self::SendPaymentAsync => write!(f, "sendPaymentAsync"),
+            Self::SendPaymentAsync => write!(f, "{SEND_PAYMENT_ASYNC}"),
             Self::SignMessage => write!(f, "signMessage"),
             Self::VerifyMessage => write!(f, "verifyMessage"),
             Self::Request => write!(f, "request"),
@@ -269,7 +270,7 @@ impl WebLN {
 
     // TODO: add `make_invoice`
 
-    // Request that the user sends a payment for an invoice.
+    /// Request that the user sends a payment for an invoice.
     pub async fn send_payment(&self, invoice: String) -> Result<SendPaymentResponse, Error> {
         let func: Function = self.get_func(&self.webln_obj, SEND_PAYMENT)?;
         let promise: Promise = Promise::resolve(&func.call1(&self.webln_obj, &invoice.into())?);
@@ -281,5 +282,16 @@ impl WebLN {
                 .as_string()
                 .ok_or_else(|| Error::TypeMismatch(String::from("expected a string [preimage]")))?,
         })
+    }
+
+    /// Request that the user sends a payment for an invoice.
+    /// The payment will only be initiated and will not wait for a preimage to be returned.
+    /// This is useful when paying HOLD Invoices. There is no guarantee that the payment will be successfully sent to the receiver.
+    /// It's up to the receiver to check whether or not the invoice has been paid.
+    pub async fn send_payment_async(&self, invoice: String) -> Result<(), Error> {
+        let func: Function = self.get_func(&self.webln_obj, SEND_PAYMENT_ASYNC)?;
+        let promise: Promise = Promise::resolve(&func.call1(&self.webln_obj, &invoice.into())?);
+        JsFuture::from(promise).await?;
+        Ok(())
     }
 }

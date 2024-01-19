@@ -74,7 +74,7 @@ impl JsWebLN {
 
     // TODO: add `make_invoice`
 
-    // Request that the user sends a payment for an invoice.
+    /// Request that the user sends a payment for an invoice.
     #[wasm_bindgen(js_name = sendPayment)]
     pub async fn send_payment(&self, invoice: String) -> Result<JsSendPaymentResponse> {
         Ok(self
@@ -83,5 +83,17 @@ impl JsWebLN {
             .await
             .map_err(into_err)?
             .into())
+    }
+
+    /// Request that the user sends a payment for an invoice.
+    /// The payment will only be initiated and will not wait for a preimage to be returned.
+    /// This is useful when paying HOLD Invoices. There is no guarantee that the payment will be successfully sent to the receiver.
+    /// It's up to the receiver to check whether or not the invoice has been paid.
+    #[wasm_bindgen(js_name = sendPaymentAsync)]
+    pub async fn send_payment_async(&self, invoice: String) -> Result<()> {
+        self.inner
+            .send_payment_async(invoice)
+            .await
+            .map_err(into_err)
     }
 }
