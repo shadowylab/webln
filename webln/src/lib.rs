@@ -32,6 +32,7 @@ const KEYSEND: &str = "keysend";
 const MAKE_INVOICE: &str = "makeInvoice";
 const SEND_PAYMENT: &str = "sendPayment";
 const SEND_PAYMENT_ASYNC: &str = "sendPaymentAsync";
+const SIGN_MESSAGE: &str = "signMessage";
 
 /// WebLN error
 #[derive(Debug)]
@@ -128,7 +129,7 @@ where
             MAKE_INVOICE => Self::MakeInvoice,
             SEND_PAYMENT => Self::SendPayment,
             SEND_PAYMENT_ASYNC => Self::SendPaymentAsync,
-            "signMessage" => Self::SignMessage,
+            SIGN_MESSAGE => Self::SignMessage,
             "verifyMessage" => Self::VerifyMessage,
             "request" => Self::Request,
             "lnurl" => Self::Lnurl,
@@ -150,7 +151,7 @@ impl fmt::Display for GetInfoMethod {
             Self::MakeInvoice => write!(f, "{MAKE_INVOICE}"),
             Self::SendPayment => write!(f, "{SEND_PAYMENT}"),
             Self::SendPaymentAsync => write!(f, "{SEND_PAYMENT_ASYNC}"),
-            Self::SignMessage => write!(f, "signMessage"),
+            Self::SignMessage => write!(f, "{SIGN_MESSAGE}"),
             Self::VerifyMessage => write!(f, "verifyMessage"),
             Self::Request => write!(f, "request"),
             Self::Lnurl => write!(f, "lnurl"),
@@ -300,6 +301,15 @@ impl TryFrom<&RequestInvoiceArgs> for Object {
 pub struct RequestInvoiceResponse {
     /// BOLT-11 invoice
     pub invoice: String,
+}
+
+/// Sign Message Response
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SignMessageResponse {
+    /// Message
+    pub message: String,
+    /// Signature
+    pub signature: String,
 }
 
 /// WebLN instance
@@ -485,5 +495,26 @@ impl WebLN {
         }
 
         Ok(())
+    }
+
+    /// Request that the user signs an arbitrary string message.
+    pub async fn sign_message(&self, message: String) -> Result<SignMessageResponse, Error> {
+        let func: Function = self.get_func(&self.webln_obj, SIGN_MESSAGE)?;
+        let promise: Promise = Promise::resolve(&func.call1(&self.webln_obj, &message.into())?);
+        let result: JsValue = JsFuture::from(promise).await?;
+        let sign_message_response_obj: Object =
+            result.dyn_into().map_err(|_| Error::SomethingGoneWrong)?;
+
+        // Extract data
+        let message: String = self
+            .get_value_by_key(&sign_message_response_obj, "message")?
+            .as_string()
+            .ok_or_else(|| Error::TypeMismatch(String::from("expected a string [message]")))?;
+        let signature: String = self
+            .get_value_by_key(&sign_message_response_obj, "signature")?
+            .as_string()
+            .ok_or_else(|| Error::TypeMismatch(String::from("expected a string [signature]")))?;
+
+        Ok(SignMessageResponse { message, signature })
     }
 }

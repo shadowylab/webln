@@ -19,12 +19,14 @@ pub mod get_info;
 pub mod keysend;
 pub mod request_invoice;
 pub mod send_payment;
+pub mod sign_message;
 
 use self::error::{into_err, Result};
 use self::get_info::JsGetInfoResponse;
 use self::keysend::JsKeysendArgs;
 use self::request_invoice::{JsRequestInvoiceArgs, JsRequestInvoiceResponse};
 use self::send_payment::JsSendPaymentResponse;
+use self::sign_message::JsSignMessageResponse;
 
 #[wasm_bindgen(start)]
 pub fn start() {
@@ -113,5 +115,16 @@ impl JsWebLN {
             .send_payment_async(invoice)
             .await
             .map_err(into_err)
+    }
+
+    /// Request that the user signs an arbitrary string message.
+    #[wasm_bindgen(js_name = signMessage)]
+    pub async fn sign_message(&self, message: String) -> Result<JsSignMessageResponse> {
+        Ok(self
+            .inner
+            .sign_message(message)
+            .await
+            .map_err(into_err)?
+            .into())
     }
 }
