@@ -91,4 +91,14 @@ impl WebLN {
             .as_bool()
             .ok_or_else(|| Error::TypeMismatch(String::from("expected a bool")))
     }
+
+    /// To begin interacting with WebLN APIs you'll first need to enable the provider.
+    /// Calling `webln.enable()` will prompt the user for permission to use the WebLN capabilities of the browser.
+    /// After that you are free to call any of the other API methods.
+    pub async fn enable(&self) -> Result<(), Error> {
+        let func: Function = self.get_func(&self.webln_obj, "enable")?;
+        let promise: Promise = Promise::resolve(&func.call0(&self.webln_obj)?);
+        JsFuture::from(promise).await?;
+        Ok(())
+    }
 }
