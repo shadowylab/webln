@@ -30,6 +30,7 @@ use self::request_invoice::{JsRequestInvoiceArgs, JsRequestInvoiceResponse};
 use self::send_payment::JsSendPaymentResponse;
 use self::sign_message::JsSignMessageResponse;
 
+#[cfg(feature = "console_error_panic_hook")]
 #[wasm_bindgen(start)]
 pub fn start() {
     console_error_panic_hook::set_once();

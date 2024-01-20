@@ -16,7 +16,7 @@ set -e
 
 cd $(dirname "$0")/..
 
-wasm-pack build --target nodejs --no-pack --scope shadowylab --weak-refs --out-dir pkg "${WASM_PACK_ARGS[@]}"
+wasm-pack build --target nodejs --no-pack --scope shadowylab --weak-refs --out-dir pkg "${WASM_PACK_ARGS[@]}" --features "console_error_panic_hook"
 
 # Shrinking .wasm Size
 wc -c pkg/webln_js_bg.wasm
