@@ -41,6 +41,14 @@ pub struct JsWebLN {
     inner: WebLN,
 }
 
+impl Deref for JsWebLN {
+    type Target = WebLN;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
 #[wasm_bindgen(js_class = WebLN)]
 impl JsWebLN {
     /// Compose new WebLN instance
