@@ -13,9 +13,9 @@ license = "MIT"
 rust-version = "1.64.0" # TODO: check MSRV
 
 [workspace.dependencies]
-js-sys = "0.3"
+js-sys = { version = "0.3", default-features = false }
 wasm-bindgen = { version = "0.2", default-features = false }
-wasm-bindgen-futures = "0.4"
+wasm-bindgen-futures = { version = "0.4", default-features = false }
 
 [profile.release]
 lto = true
