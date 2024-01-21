@@ -8,7 +8,6 @@
 
 extern crate alloc;
 
-use alloc::string::String;
 use core::ops::Deref;
 
 use wasm_bindgen::prelude::*;
@@ -107,7 +106,7 @@ impl JsWebLN {
 
     /// Request that the user sends a payment for an invoice.
     #[wasm_bindgen(js_name = sendPayment)]
-    pub async fn send_payment(&self, invoice: String) -> Result<JsSendPaymentResponse> {
+    pub async fn send_payment(&self, invoice: &str) -> Result<JsSendPaymentResponse> {
         Ok(self
             .inner
             .send_payment(invoice)
@@ -121,7 +120,7 @@ impl JsWebLN {
     /// This is useful when paying HOLD Invoices. There is no guarantee that the payment will be successfully sent to the receiver.
     /// It's up to the receiver to check whether or not the invoice has been paid.
     #[wasm_bindgen(js_name = sendPaymentAsync)]
-    pub async fn send_payment_async(&self, invoice: String) -> Result<()> {
+    pub async fn send_payment_async(&self, invoice: &str) -> Result<()> {
         self.inner
             .send_payment_async(invoice)
             .await
@@ -130,7 +129,7 @@ impl JsWebLN {
 
     /// Request that the user signs an arbitrary string message.
     #[wasm_bindgen(js_name = signMessage)]
-    pub async fn sign_message(&self, message: String) -> Result<JsSignMessageResponse> {
+    pub async fn sign_message(&self, message: &str) -> Result<JsSignMessageResponse> {
         Ok(self
             .inner
             .sign_message(message)

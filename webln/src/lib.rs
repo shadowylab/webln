@@ -122,12 +122,9 @@ pub enum GetInfoMethod {
     Other(String),
 }
 
-impl<S> From<S> for GetInfoMethod
-where
-    S: AsRef<str>,
-{
-    fn from(method: S) -> Self {
-        match method.as_ref() {
+impl From<&str> for GetInfoMethod {
+    fn from(method: &str) -> Self {
+        match method {
             IS_ENABLED => Self::IsEnabled,
             ENABLE => Self::Enable,
             GET_INFO => Self::GetInfo,
@@ -246,11 +243,8 @@ impl RequestInvoiceArgs {
     }
 
     /// Set default memo
-    pub fn default_memo<S>(mut self, default_memo: S) -> Self
-    where
-        S: Into<String>,
-    {
-        self.default_memo = Some(default_memo.into());
+    pub fn default_memo(mut self, default_memo: String) -> Self {
+        self.default_memo = Some(default_memo);
         self
     }
 }
@@ -349,11 +343,7 @@ impl WebLN {
         Ok(Self { webln_obj })
     }
 
-    fn get_func<S>(&self, obj: &Object, name: S) -> Result<Function, Error>
-    where
-        S: AsRef<str>,
-    {
-        let name: &str = name.as_ref();
+    fn get_func(&self, obj: &Object, name: &str) -> Result<Function, Error> {
         let val: JsValue = Reflect::get(obj, &JsValue::from_str(name))
             .map_err(|_| Error::NamespaceNotFound(name.to_string()))?;
         val.dyn_into()
@@ -407,7 +397,7 @@ impl WebLN {
         let methods: Vec<GetInfoMethod> = methods_array
             .into_iter()
             .filter_map(|m| m.as_string())
-            .map(GetInfoMethod::from)
+            .map(|m| GetInfoMethod::from(m.as_str()))
             .collect();
 
         Ok(GetInfoResponse {
@@ -474,12 +464,7 @@ impl WebLN {
     }
 
     /// Request that the user sends a payment for an invoice.
-    pub async fn send_payment<S>(&self, invoice: S) -> Result<SendPaymentResponse, Error>
-    where
-        S: AsRef<str>,
-    {
-        let invoice: &str = invoice.as_ref();
-
+    pub async fn send_payment(&self, invoice: &str) -> Result<SendPaymentResponse, Error> {
         // `lightning-invoice` increase too much the WASM binary size
         // For now just check if invoice is not empty
         if invoice.is_empty() {
@@ -502,12 +487,7 @@ impl WebLN {
     /// The payment will only be initiated and will not wait for a preimage to be returned.
     /// This is useful when paying HOLD Invoices. There is no guarantee that the payment will be successfully sent to the receiver.
     /// It's up to the receiver to check whether or not the invoice has been paid.
-    pub async fn send_payment_async<S>(&self, invoice: S) -> Result<(), Error>
-    where
-        S: AsRef<str>,
-    {
-        let invoice: &str = invoice.as_ref();
-
+    pub async fn send_payment_async(&self, invoice: &str) -> Result<(), Error> {
         // `lightning-invoice` increase too much the WASM binary size
         // For now just check if invoice is not empty
         if invoice.is_empty() {
@@ -526,11 +506,7 @@ impl WebLN {
     }
 
     /// Request that the user signs an arbitrary string message.
-    pub async fn sign_message<S>(&self, message: S) -> Result<SignMessageResponse, Error>
-    where
-        S: AsRef<str>,
-    {
-        let message: &str = message.as_ref();
+    pub async fn sign_message(&self, message: &str) -> Result<SignMessageResponse, Error> {
         let func: Function = self.get_func(&self.webln_obj, SIGN_MESSAGE)?;
         let promise: Promise = Promise::resolve(&func.call1(&self.webln_obj, &message.into())?);
         let result: JsValue = JsFuture::from(promise).await?;
