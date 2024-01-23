@@ -10,6 +10,10 @@ npm i @shadowylab/webln
 import { WebLN, loadWasmAsync } from '@shadowylab/webln';
 
 async function webln() {
+    // Load WASM
+    await loadWasmAsync();
+
+    // Compose new WebLN instance
     let webln = new WebLN();
 
     // Check if WebLN is enabled
@@ -38,7 +42,7 @@ async function webln() {
 
 ## License
 
-This project is distributed under the MIT software license - see the [LICENSE](LICENSE) file for details
+This project is distributed under the MIT software license - see the [LICENSE](https://github.com/shadowylab/webln/blob/master/LICENSE) file for details
 
 ## Donations
 
