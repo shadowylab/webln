@@ -8,8 +8,11 @@
 
 extern crate alloc;
 
+use alloc::string::String;
+use alloc::vec::Vec;
 use core::ops::Deref;
 
+use send_payment::JsSendMultiPaymentResponse;
 use wasm_bindgen::prelude::*;
 use webln::WebLN;
 
@@ -110,6 +113,20 @@ impl JsWebLN {
         Ok(self
             .inner
             .send_payment(invoice)
+            .await
+            .map_err(into_err)?
+            .into())
+    }
+
+    /// Request that the user sends multiple payments.
+    #[wasm_bindgen(js_name = sendMultiPayment)]
+    pub async fn send_multi_payment(
+        &self,
+        invoices: Vec<String>,
+    ) -> Result<JsSendMultiPaymentResponse> {
+        Ok(self
+            .inner
+            .send_multi_payment(invoices)
             .await
             .map_err(into_err)?
             .into())

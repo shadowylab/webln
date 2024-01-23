@@ -31,6 +31,7 @@ const GET_INFO: &str = "getInfo";
 const KEYSEND: &str = "keysend";
 const MAKE_INVOICE: &str = "makeInvoice";
 const SEND_PAYMENT: &str = "sendPayment";
+const SEND_MULTI_PAYMENT: &str = "sendMultiPayment";
 const SEND_PAYMENT_ASYNC: &str = "sendPaymentAsync";
 const SIGN_MESSAGE: &str = "signMessage";
 const VERIFY_MESSAGE: &str = "verifyMessage";
@@ -111,6 +112,7 @@ pub enum GetInfoMethod {
     Keysend,
     MakeInvoice,
     SendPayment,
+    SendMultiPayment,
     SendPaymentAsync,
     SignMessage,
     VerifyMessage,
@@ -131,6 +133,7 @@ impl From<&str> for GetInfoMethod {
             KEYSEND => Self::Keysend,
             MAKE_INVOICE => Self::MakeInvoice,
             SEND_PAYMENT => Self::SendPayment,
+            SEND_MULTI_PAYMENT => Self::SendMultiPayment,
             SEND_PAYMENT_ASYNC => Self::SendPaymentAsync,
             SIGN_MESSAGE => Self::SignMessage,
             VERIFY_MESSAGE => Self::VerifyMessage,
@@ -153,6 +156,7 @@ impl fmt::Display for GetInfoMethod {
             Self::Keysend => write!(f, "{KEYSEND}"),
             Self::MakeInvoice => write!(f, "{MAKE_INVOICE}"),
             Self::SendPayment => write!(f, "{SEND_PAYMENT}"),
+            Self::SendMultiPayment => write!(f, "{SEND_MULTI_PAYMENT}"),
             Self::SendPaymentAsync => write!(f, "{SEND_PAYMENT_ASYNC}"),
             Self::SignMessage => write!(f, "{SIGN_MESSAGE}"),
             Self::VerifyMessage => write!(f, "{VERIFY_MESSAGE}"),
@@ -193,6 +197,33 @@ pub struct KeysendArgs {
 pub struct SendPaymentResponse {
     /// Preimage
     pub preimage: String,
+}
+
+/// Send Multi Payment Single response
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SendMultiPaymentSingle {
+    /// Payment request
+    pub payment_request: String,
+    /// Error message
+    pub response: SendPaymentResponse,
+}
+
+/// Send Multi Payment Error
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SendMultiPaymentError {
+    /// Payment request
+    pub payment_request: String,
+    /// Error message
+    pub message: String,
+}
+
+/// Send Payment Response
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SendMultiPaymentResponse {
+    /// Payments
+    pub payments: Vec<SendMultiPaymentSingle>,
+    /// Errors  
+    pub errors: Vec<SendMultiPaymentError>,
 }
 
 /// Request invoice args
@@ -480,6 +511,59 @@ impl WebLN {
                 .get_value_by_key(&send_payment_obj, "preimage")?
                 .as_string()
                 .ok_or_else(|| Error::TypeMismatch(String::from("expected a string [preimage]")))?,
+        })
+    }
+
+    /// Request that the user sends multiple payments.
+    pub async fn send_multi_payment<I, S>(
+        &self,
+        invoices: I,
+    ) -> Result<SendMultiPaymentResponse, Error>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        let invoices: Array = invoices
+            .into_iter()
+            .map(|i| JsValue::from_str(i.as_ref()))
+            .collect();
+        let func: Function = self.get_func(&self.webln_obj, SEND_MULTI_PAYMENT)?;
+        let promise: Promise = Promise::resolve(&func.call1(&self.webln_obj, &invoices.into())?);
+        let result: JsValue = JsFuture::from(promise).await?;
+        let send_multi_payment_obj: Object =
+            result.dyn_into().map_err(|_| Error::SomethingGoneWrong)?;
+
+        // let js_payments: Array = self
+        // .get_value_by_key(&send_multi_payment_obj, "payments")?
+        // .dyn_into()?;
+        let js_errors: Array = self
+            .get_value_by_key(&send_multi_payment_obj, "errors")?
+            .dyn_into()?;
+
+        // Deserialize errors
+        let mut errors: Vec<SendMultiPaymentError> =
+            Vec::with_capacity(js_errors.length() as usize);
+        for error in js_errors.into_iter() {
+            let error_obj: Object = error.dyn_into().map_err(|_| Error::SomethingGoneWrong)?;
+            let payment_request = self
+                .get_value_by_key(&error_obj, "paymentRequest")?
+                .as_string()
+                .ok_or_else(|| {
+                    Error::TypeMismatch(String::from("expected a string [paymentRequest]"))
+                })?;
+            let message = self
+                .get_value_by_key(&error_obj, "message")?
+                .as_string()
+                .ok_or_else(|| Error::TypeMismatch(String::from("expected a string [message]")))?;
+            errors.push(SendMultiPaymentError {
+                payment_request,
+                message,
+            });
+        }
+
+        Ok(SendMultiPaymentResponse {
+            payments: Vec::new(), // TODO
+            errors,
         })
     }
 
