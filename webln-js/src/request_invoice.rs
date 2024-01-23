@@ -73,8 +73,8 @@ impl From<RequestInvoiceResponse> for JsRequestInvoiceResponse {
 
 #[wasm_bindgen(js_class = RequestInvoiceResponse)]
 impl JsRequestInvoiceResponse {
-    #[wasm_bindgen(getter)]
-    pub fn invoice(&self) -> String {
-        self.inner.invoice.clone()
+    #[wasm_bindgen(getter, js_name = paymentRequest)]
+    pub fn payment_request(&self) -> String {
+        self.inner.payment_request.clone()
     }
 }
