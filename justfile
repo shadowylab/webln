@@ -17,3 +17,6 @@ check-crates-msrv:
 
 check-docs:
 	@bash contrib/scripts/check-docs.sh
+
+publish-js:
+	cd webln-js && just publish
