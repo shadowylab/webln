@@ -1,7 +1,6 @@
 // Copyright (c) 2024 Yuki Kishimoto
 // Distributed under the MIT software license
 
-use alloc::string::String;
 use core::ops::Deref;
 use core::str::FromStr;
 
@@ -26,8 +25,8 @@ impl Deref for JsKeysendArgs {
 
 #[wasm_bindgen(js_class = KeysendArgs)]
 impl JsKeysendArgs {
-    pub fn new(destination: String, amount: u32) -> Result<JsKeysendArgs> {
-        let destination: PublicKey = PublicKey::from_str(&destination).map_err(into_err)?;
+    pub fn new(destination: &str, amount: u32) -> Result<JsKeysendArgs> {
+        let destination: PublicKey = PublicKey::from_str(destination).map_err(into_err)?;
         let amount: u64 = amount as u64;
         Ok(Self {
             inner: KeysendArgs {
