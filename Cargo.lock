@@ -192,7 +192,7 @@ dependencies = [
 
 [[package]]
 name = "webln"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "js-sys",
  "secp256k1",
@@ -206,7 +206,6 @@ name = "webln-js"
 version = "0.1.2"
 dependencies = [
  "console_error_panic_hook",
- "js-sys",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "webln",
