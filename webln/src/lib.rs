@@ -30,6 +30,7 @@ const GET_INFO: &str = "getInfo";
 const KEYSEND: &str = "keysend";
 const MAKE_INVOICE: &str = "makeInvoice";
 const SEND_PAYMENT: &str = "sendPayment";
+const SEND_MULTI_PAYMENT: &str = "sendMultiPayment";
 const SEND_PAYMENT_ASYNC: &str = "sendPaymentAsync";
 const SIGN_MESSAGE: &str = "signMessage";
 const VERIFY_MESSAGE: &str = "verifyMessage";
@@ -89,6 +90,24 @@ impl From<JsValue> for Error {
     }
 }
 
+/// Get value from object key
+fn get_value_by_key(obj: &Object, key: &str) -> Result<JsValue, Error> {
+    Reflect::get(obj, &JsValue::from_str(key))
+        .map_err(|_| Error::ObjectKeyNotFound(key.to_string()))
+}
+
+trait Deserialize: Sized {
+    fn deserialize(value: JsValue) -> Result<Self, Error>;
+}
+
+impl Deserialize for bool {
+    fn deserialize(value: JsValue) -> Result<Self, Error> {
+        value
+            .as_bool()
+            .ok_or_else(|| Error::TypeMismatch(String::from("expected a bool")))
+    }
+}
+
 /// Get Info Node Response
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GetInfoNode {
@@ -110,6 +129,7 @@ pub enum GetInfoMethod {
     Keysend,
     MakeInvoice,
     SendPayment,
+    SendMultiPayment,
     SendPaymentAsync,
     SignMessage,
     VerifyMessage,
@@ -130,6 +150,7 @@ impl From<&str> for GetInfoMethod {
             KEYSEND => Self::Keysend,
             MAKE_INVOICE => Self::MakeInvoice,
             SEND_PAYMENT => Self::SendPayment,
+            SEND_MULTI_PAYMENT => Self::SendMultiPayment,
             SEND_PAYMENT_ASYNC => Self::SendPaymentAsync,
             SIGN_MESSAGE => Self::SignMessage,
             VERIFY_MESSAGE => Self::VerifyMessage,
@@ -152,6 +173,7 @@ impl fmt::Display for GetInfoMethod {
             Self::Keysend => write!(f, "{KEYSEND}"),
             Self::MakeInvoice => write!(f, "{MAKE_INVOICE}"),
             Self::SendPayment => write!(f, "{SEND_PAYMENT}"),
+            Self::SendMultiPayment => write!(f, "{SEND_MULTI_PAYMENT}"),
             Self::SendPaymentAsync => write!(f, "{SEND_PAYMENT_ASYNC}"),
             Self::SignMessage => write!(f, "{SIGN_MESSAGE}"),
             Self::VerifyMessage => write!(f, "{VERIFY_MESSAGE}"),
@@ -174,6 +196,36 @@ pub struct GetInfoResponse {
     pub methods: Vec<GetInfoMethod>,
 }
 
+impl Deserialize for GetInfoResponse {
+    fn deserialize(value: JsValue) -> Result<Self, Error> {
+        let get_info_obj: Object = value.dyn_into().map_err(|_| Error::SomethingGoneWrong)?;
+
+        let node_obj: Object = get_value_by_key(&get_info_obj, "node")?
+            .dyn_into()
+            .map_err(|_| Error::SomethingGoneWrong)?;
+
+        // Extract data
+        let alias: Option<String> = get_value_by_key(&node_obj, "alias")?.as_string();
+        let pubkey: Option<String> = get_value_by_key(&node_obj, "pubkey")?.as_string();
+        let color: Option<String> = get_value_by_key(&node_obj, "color")?.as_string();
+        let methods_array: Array = get_value_by_key(&get_info_obj, "methods")?.into();
+        let methods: Vec<GetInfoMethod> = methods_array
+            .into_iter()
+            .filter_map(|m| m.as_string())
+            .map(|m| GetInfoMethod::from(m.as_str()))
+            .collect();
+
+        Ok(Self {
+            node: GetInfoNode {
+                alias,
+                pubkey,
+                color,
+            },
+            methods,
+        })
+    }
+}
+
 /// Keysend args
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct KeysendArgs {
@@ -192,6 +244,84 @@ pub struct KeysendArgs {
 pub struct SendPaymentResponse {
     /// Preimage
     pub preimage: String,
+}
+
+impl Deserialize for SendPaymentResponse {
+    fn deserialize(value: JsValue) -> Result<Self, Error> {
+        let send_payment_obj: Object = value.dyn_into().map_err(|_| Error::SomethingGoneWrong)?;
+        let preimage = get_value_by_key(&send_payment_obj, "preimage")?
+            .as_string()
+            .ok_or_else(|| Error::TypeMismatch(String::from("expected a string [preimage]")))?;
+        Ok(Self { preimage })
+    }
+}
+
+/// Send Multi Payment Single response
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SendMultiPaymentSingle {
+    /// Payment request
+    pub payment_request: String,
+    /// Error message
+    pub response: SendPaymentResponse,
+}
+
+/// Send Multi Payment Error
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SendMultiPaymentError {
+    /// Payment request
+    pub payment_request: String,
+    /// Error message
+    pub message: String,
+}
+
+impl Deserialize for SendMultiPaymentError {
+    fn deserialize(value: JsValue) -> Result<Self, Error> {
+        let error_obj: Object = value.dyn_into().map_err(|_| Error::SomethingGoneWrong)?;
+        let payment_request = get_value_by_key(&error_obj, "paymentRequest")?
+            .as_string()
+            .ok_or_else(|| {
+                Error::TypeMismatch(String::from("expected a string [paymentRequest]"))
+            })?;
+        let message = get_value_by_key(&error_obj, "message")?
+            .as_string()
+            .ok_or_else(|| Error::TypeMismatch(String::from("expected a string [message]")))?;
+        Ok(Self {
+            payment_request,
+            message,
+        })
+    }
+}
+
+/// Send Payment Response
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SendMultiPaymentResponse {
+    /// Payments
+    pub payments: Vec<SendMultiPaymentSingle>,
+    /// Errors  
+    pub errors: Vec<SendMultiPaymentError>,
+}
+
+impl Deserialize for SendMultiPaymentResponse {
+    fn deserialize(value: JsValue) -> Result<Self, Error> {
+        let obj: Object = value.dyn_into().map_err(|_| Error::SomethingGoneWrong)?;
+
+        // let js_payments: Array = self
+        // .get_value_by_key(&obj, "payments")?
+        // .dyn_into()?;
+        let js_errors: Array = get_value_by_key(&obj, "errors")?.dyn_into()?;
+
+        // Deserialize errors
+        let mut errors: Vec<SendMultiPaymentError> =
+            Vec::with_capacity(js_errors.length() as usize);
+        for error in js_errors.into_iter() {
+            errors.push(SendMultiPaymentError::deserialize(error)?);
+        }
+
+        Ok(Self {
+            payments: Vec::new(), // TODO
+            errors,
+        })
+    }
 }
 
 /// Request invoice args
@@ -302,7 +432,20 @@ impl TryFrom<&RequestInvoiceArgs> for Object {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct RequestInvoiceResponse {
     /// BOLT-11 invoice
-    pub invoice: String,
+    pub payment_request: String,
+}
+
+impl Deserialize for RequestInvoiceResponse {
+    fn deserialize(value: JsValue) -> Result<Self, Error> {
+        let obj: Object = value.dyn_into().map_err(|_| Error::SomethingGoneWrong)?;
+        Ok(Self {
+            payment_request: get_value_by_key(&obj, "paymentRequest")?
+                .as_string()
+                .ok_or_else(|| {
+                    Error::TypeMismatch(String::from("expected a string [paymentRequest]"))
+                })?,
+        })
+    }
 }
 
 /// Sign Message Response
@@ -314,6 +457,19 @@ pub struct SignMessageResponse {
     pub signature: String,
 }
 
+impl Deserialize for SignMessageResponse {
+    fn deserialize(value: JsValue) -> Result<Self, Error> {
+        let obj: Object = value.dyn_into().map_err(|_| Error::SomethingGoneWrong)?;
+        let message: String = get_value_by_key(&obj, "message")?
+            .as_string()
+            .ok_or_else(|| Error::TypeMismatch(String::from("expected a string [message]")))?;
+        let signature: String = get_value_by_key(&obj, "signature")?
+            .as_string()
+            .ok_or_else(|| Error::TypeMismatch(String::from("expected a string [signature]")))?;
+        Ok(Self { message, signature })
+    }
+}
+
 /// Balance Response
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct BalanceResponse {
@@ -321,6 +477,19 @@ pub struct BalanceResponse {
     pub balance: f64,
     /// Currency
     pub currency: Option<String>,
+}
+
+impl Deserialize for BalanceResponse {
+    fn deserialize(value: JsValue) -> Result<Self, Error> {
+        let balance_response_obj: Object =
+            value.dyn_into().map_err(|_| Error::SomethingGoneWrong)?;
+        let balance: f64 = get_value_by_key(&balance_response_obj, "balance")?
+            .as_f64()
+            .ok_or_else(|| Error::TypeMismatch(String::from("expected a number [balance]")))?;
+        let currency: Option<String> =
+            get_value_by_key(&balance_response_obj, "currency")?.as_string();
+        Ok(Self { balance, currency })
+    }
 }
 
 /// WebLN instance
@@ -353,21 +522,13 @@ impl WebLN {
             .map_err(|_| Error::NamespaceNotFound(name.to_string()))
     }
 
-    /// Get value from object key
-    fn get_value_by_key(&self, obj: &Object, key: &str) -> Result<JsValue, Error> {
-        Reflect::get(obj, &JsValue::from_str(key))
-            .map_err(|_| Error::ObjectKeyNotFound(key.to_string()))
-    }
-
     /// Check if `webln` is enabled without explicitly enabling it through `webln.enable()`
     /// (which may cause a confirmation popup in some providers)
     pub async fn is_enabled(&self) -> Result<bool, Error> {
         let func: Function = self.get_func(&self.webln_obj, IS_ENABLED)?;
         let promise: Promise = Promise::resolve(&func.call0(&self.webln_obj)?);
         let result: JsValue = JsFuture::from(promise).await?;
-        result
-            .as_bool()
-            .ok_or_else(|| Error::TypeMismatch(String::from("expected a bool")))
+        bool::deserialize(result)
     }
 
     /// To begin interacting with WebLN APIs you'll first need to enable the provider.
@@ -385,32 +546,7 @@ impl WebLN {
         let func: Function = self.get_func(&self.webln_obj, GET_INFO)?;
         let promise: Promise = Promise::resolve(&func.call0(&self.webln_obj)?);
         let result: JsValue = JsFuture::from(promise).await?;
-        let get_info_obj: Object = result.dyn_into().map_err(|_| Error::SomethingGoneWrong)?;
-
-        let node_obj: Object = self
-            .get_value_by_key(&get_info_obj, "node")?
-            .dyn_into()
-            .map_err(|_| Error::SomethingGoneWrong)?;
-
-        // Extract data
-        let alias: Option<String> = self.get_value_by_key(&node_obj, "alias")?.as_string();
-        let pubkey: Option<String> = self.get_value_by_key(&node_obj, "pubkey")?.as_string();
-        let color: Option<String> = self.get_value_by_key(&node_obj, "color")?.as_string();
-        let methods_array: Array = self.get_value_by_key(&get_info_obj, "methods")?.into();
-        let methods: Vec<GetInfoMethod> = methods_array
-            .into_iter()
-            .filter_map(|m| m.as_string())
-            .map(|m| GetInfoMethod::from(m.as_str()))
-            .collect();
-
-        Ok(GetInfoResponse {
-            node: GetInfoNode {
-                alias,
-                pubkey,
-                color,
-            },
-            methods,
-        })
+        GetInfoResponse::deserialize(result)
     }
 
     /// Request the user to send a keysend payment.
@@ -432,14 +568,7 @@ impl WebLN {
 
         let promise: Promise = Promise::resolve(&func.call1(&self.webln_obj, &keysend_obj.into())?);
         let result: JsValue = JsFuture::from(promise).await?;
-        let send_payment_obj: Object = result.dyn_into().map_err(|_| Error::SomethingGoneWrong)?;
-
-        Ok(SendPaymentResponse {
-            preimage: self
-                .get_value_by_key(&send_payment_obj, "preimage")?
-                .as_string()
-                .ok_or_else(|| Error::TypeMismatch(String::from("expected a string [preimage]")))?,
-        })
+        SendPaymentResponse::deserialize(result)
     }
 
     /// Request that the user creates an invoice to be used by the web app
@@ -448,22 +577,11 @@ impl WebLN {
         args: &RequestInvoiceArgs,
     ) -> Result<RequestInvoiceResponse, Error> {
         let func: Function = self.get_func(&self.webln_obj, MAKE_INVOICE)?;
-
         let request_invoice_obj: Object = args.try_into()?;
-
         let promise: Promise =
             Promise::resolve(&func.call1(&self.webln_obj, &request_invoice_obj.into())?);
         let result: JsValue = JsFuture::from(promise).await?;
-        let request_invoice_response_obj: Object =
-            result.dyn_into().map_err(|_| Error::SomethingGoneWrong)?;
-        Ok(RequestInvoiceResponse {
-            invoice: self
-                .get_value_by_key(&request_invoice_response_obj, "paymentRequest")?
-                .as_string()
-                .ok_or_else(|| {
-                    Error::TypeMismatch(String::from("expected a string [paymentRequest]"))
-                })?,
-        })
+        RequestInvoiceResponse::deserialize(result)
     }
 
     /// Request that the user sends a payment for an invoice.
@@ -477,13 +595,26 @@ impl WebLN {
         let func: Function = self.get_func(&self.webln_obj, SEND_PAYMENT)?;
         let promise: Promise = Promise::resolve(&func.call1(&self.webln_obj, &invoice.into())?);
         let result: JsValue = JsFuture::from(promise).await?;
-        let send_payment_obj: Object = result.dyn_into().map_err(|_| Error::SomethingGoneWrong)?;
-        Ok(SendPaymentResponse {
-            preimage: self
-                .get_value_by_key(&send_payment_obj, "preimage")?
-                .as_string()
-                .ok_or_else(|| Error::TypeMismatch(String::from("expected a string [preimage]")))?,
-        })
+        SendPaymentResponse::deserialize(result)
+    }
+
+    /// Request that the user sends multiple payments.
+    pub async fn send_multi_payment<I, S>(
+        &self,
+        invoices: I,
+    ) -> Result<SendMultiPaymentResponse, Error>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        let invoices: Array = invoices
+            .into_iter()
+            .map(|i| JsValue::from_str(i.as_ref()))
+            .collect();
+        let func: Function = self.get_func(&self.webln_obj, SEND_MULTI_PAYMENT)?;
+        let promise: Promise = Promise::resolve(&func.call1(&self.webln_obj, &invoices.into())?);
+        let result: JsValue = JsFuture::from(promise).await?;
+        SendMultiPaymentResponse::deserialize(result)
     }
 
     /// Request that the user sends a payment for an invoice.
@@ -513,19 +644,7 @@ impl WebLN {
         let func: Function = self.get_func(&self.webln_obj, SIGN_MESSAGE)?;
         let promise: Promise = Promise::resolve(&func.call1(&self.webln_obj, &message.into())?);
         let result: JsValue = JsFuture::from(promise).await?;
-        let sign_message_response_obj: Object =
-            result.dyn_into().map_err(|_| Error::SomethingGoneWrong)?;
-
-        // Extract data
-        let signature: String = self
-            .get_value_by_key(&sign_message_response_obj, "signature")?
-            .as_string()
-            .ok_or_else(|| Error::TypeMismatch(String::from("expected a string [signature]")))?;
-
-        Ok(SignMessageResponse {
-            message: message.to_string(),
-            signature,
-        })
+        SignMessageResponse::deserialize(result)
     }
 
     /// Fetch the balance of the current account.
@@ -533,18 +652,6 @@ impl WebLN {
         let func: Function = self.get_func(&self.webln_obj, GET_BALANCE)?;
         let promise: Promise = Promise::resolve(&func.call0(&self.webln_obj)?);
         let result: JsValue = JsFuture::from(promise).await?;
-        let balance_response_obj: Object =
-            result.dyn_into().map_err(|_| Error::SomethingGoneWrong)?;
-
-        // Extract data
-        let balance: f64 = self
-            .get_value_by_key(&balance_response_obj, "balance")?
-            .as_f64()
-            .ok_or_else(|| Error::TypeMismatch(String::from("expected a number [balance]")))?;
-        let currency: Option<String> = self
-            .get_value_by_key(&balance_response_obj, "currency")?
-            .as_string();
-
-        Ok(BalanceResponse { balance, currency })
+        BalanceResponse::deserialize(result)
     }
 }
