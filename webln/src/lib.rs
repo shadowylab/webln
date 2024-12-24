@@ -5,7 +5,6 @@
 //!
 //! <https://webln.guide>
 
-#![forbid(unsafe_code)]
 #![warn(missing_docs)]
 #![warn(rustdoc::bare_urls)]
 #![cfg_attr(not(feature = "std"), no_std)]
@@ -330,6 +329,10 @@ pub struct WebLN {
     /// `window.webln` object
     webln_obj: Object,
 }
+
+unsafe impl Send for WebLN {}
+
+unsafe impl Sync for WebLN {}
 
 impl WebLN {
     /// Compose new WebLN instance
