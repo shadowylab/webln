@@ -17,7 +17,7 @@ std = ["secp256k1/std", "wasm-bindgen/std"]
 
 [dependencies]
 js-sys.workspace = true
-secp256k1 = { version = "0.27", default-features = false }
+secp256k1 = { version = "0.29", default-features = false }
 wasm-bindgen.workspace = true
 wasm-bindgen-futures.workspace = true
 web-sys = { version = "0.3", default-features = false, features = ["Window"] }
